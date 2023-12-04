@@ -183,108 +183,6 @@ def extract_wordle_info_few_shot(image_path):
     print(response.json())
     return response.json()
 
-# TODO: delete this one?  Hex value of color stuff?  
-def extract_wordle_info_few_shot_take2(image_path):
-    prompt = "Focus on the letters in colored boxes in the center of the image.  List each letter, its position in the word, and the hexadecimal code of the color of the box it's in, and the closest color to that hex value."  
-   
-    # Getting the base64 string
-    base64_image = encode_image(image_path)
-
-    # Few-shot examples
-    example1_image = encode_image("images\\Example1Step3.png")
-    example5_image = encode_image("images\\Example5Step2.png")
-
-    headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {api_key}"
-    }
-
-    payload = {
-    "model": "gpt-4-vision-preview",
-    "messages": [
-        {
-            "role": "system",
-            #"content": "You are an AI assistant that helps people solve a game of Wordle and correctly guess a word with 5 letters.  You must provide suggestions of 5-letter words that could solve the Wordle puzzle, given the information you know.  Letters with a green background are correct and are in the correct position.  Letters with a yellow background are in the word, but not in the correct position.  Letters with a dark grey background are not in the word.  Provide some example words that could solve the puzzle, or suggest words with letters that haven't been used yet to determine if those other letters are in the word.  One strategy is to guess RATES, PHONY, CLIMB, and FUDGE, which contain a wide variety of letters with only one overlap."
-            "content": "You are a Wordle AI assistant that identifies the letters already guessed in a Wordle puzzle, what color each letter is, and what character position the letter is in the 5-character word."
-        },
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": prompt
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{example1_image}"
-                    }
-                }
-            ]
-        },
-        {
-            "role": "assistant",   #TODO: Jen start here
-            "content": """In this Wordle puzzle, the green letters are:
-            - Y in the 5th position
-            The yellow letters are:
-            - L in the 2nd position
-            - B in the 5th position
-            The dark grey letters are:
-            - R, A, T, E, S, C, I, M, P, H, O, N
-            """
-        },
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": prompt
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{example5_image}"
-                    }
-                }
-            ]
-        },
-        {
-            "role": "assistant",
-            "content": """In this Wordle puzzle, the green letters are:
-            - A in the 2nd position
-            - N in the 3rd position
-            The yellow letters are:
-            - A in the 1st position
-            - D in the 3rd position
-            - D in the 1st position
-            - C in the 4th position
-            The dark grey letters are:
-            - U, I, O, E
-            """
-        },
-        {
-        "role": "user",
-        "content": [
-            {
-            "type": "text",
-            "text": prompt
-            },
-            {
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/png;base64,{base64_image}"
-            }
-            }
-        ]
-        }
-    ],
-    "max_tokens": 300
-    }
-
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-    print(response.json())
-    return response.json() 
-
 
 def extract_wordle_info_few_shot_brackets(image_path):
     prompt = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Find each green box and identify the letter within it and its position in the word.  Find each yellow box and identify the letter within it and its position in the word.  Find each dark grey box and identify the letter within it. "
@@ -855,7 +753,6 @@ def get_colors_take8(image_path, letter):
             "role": "assistant",
             "content": "The colored box for the [U] is dark grey"
         },
-        #todo start herre
         {
             "role": "user",
             "content": [
@@ -1260,7 +1157,6 @@ def wrapper_4(image_path):
 [Y], green"""
 '''
 
-    # TODO: figure out the problem of why debug is writing out too much, and ensuring it isn't over-calling
 
     print("Summary")
     print(summary)
