@@ -1,7 +1,17 @@
 import base64
 import gradio as gr
+import io
 import json
+import numpy as np
+import os
+import re
 import requests
+from PIL import Image
+
+
+# OpenAI API Key
+api_key = "TODO - put your OpenAI key here"
+
 
 # Colors Constants
 
@@ -22,54 +32,14 @@ import requests
 # H is 214, S is 3, V is 85, Opacity - Alpha is 255.  
 
 
-# OpenAI API Key
-api_key = "TODO - put your OpenAI key here"
-
-# Function to encode the image
+# Helper function to encode the image
 def encode_image(image_path):
   with open(image_path, "rb") as image_file:
     return base64.b64encode(image_file.read()).decode('utf-8')
 
-# Path to your image
-image_path = "C:\Code\WordleWithGPT\images\Example3Step4.png"
 
-def call_openai_vision_endpoint():
-    # Getting the base64 string
-    base64_image = encode_image(image_path)
-
-    headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {api_key}"
-    }
-
-    payload = {
-    "model": "gpt-4-vision-preview",
-    "messages": [
-        {
-        "role": "user",
-        "content": [
-            {
-            "type": "text",
-            "text": "What’s in this image?"
-            },
-            {
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
-            }
-            }
-        ]
-        }
-    ],
-    "max_tokens": 300
-    }
-
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-    print(response.json())
-    return response.json() 
-
-'''
-def call_openai_vision_endpoint(prompt):
+# Zero-shot prompt to call OpenAI vision endpoint
+def call_openai_vision_endpoint(image_path, prompt):
     # Getting the base64 string
     base64_image = encode_image(image_path)
 
@@ -91,7 +61,7 @@ def call_openai_vision_endpoint(prompt):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -103,10 +73,16 @@ def call_openai_vision_endpoint(prompt):
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
     print(response.json())
     return response.json() 
-'''
 
-def call_wordle_to_get_colors_openai_vision_endpoint(image_path):
-    print("Image path is" + image_path)
+
+# "Hello world" prompt to describe the image
+def describe_image(image_path):
+    ret_val = call_openai_vision_endpoint(image_path, "What’s in this image?")
+    return ret_val
+
+
+# Trying few-shot learning
+def extract_wordle_info_few_shot(image_path):
     prompt = "Focus on the letters in colored boxes in the center of the image.  List all letters in green boxes and what column they are in within their row, list which letters are in yellow boxes and their position in the word, and list which letters are in dark grey boxes."
    
     # Getting the base64 string
@@ -139,7 +115,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example1_image}"
+                        "url": f"data:image/png;base64,{example1_image}"
                     }
                 }
             ]
@@ -165,7 +141,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example5_image}"
+                        "url": f"data:image/png;base64,{example5_image}"
                     }
                 }
             ]
@@ -194,7 +170,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint(image_path):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -207,8 +183,8 @@ def call_wordle_to_get_colors_openai_vision_endpoint(image_path):
     print(response.json())
     return response.json()
 
-
-def call_wordle_to_get_colors_openai_vision_endpoint_take2(image_path):
+# TODO: delete this one?  Hex value of color stuff?  
+def extract_wordle_info_few_shot_take2(image_path):
     prompt = "Focus on the letters in colored boxes in the center of the image.  List each letter, its position in the word, and the hexadecimal code of the color of the box it's in, and the closest color to that hex value."  
    
     # Getting the base64 string
@@ -241,7 +217,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take2(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example1_image}"
+                        "url": f"data:image/png;base64,{example1_image}"
                     }
                 }
             ]
@@ -267,7 +243,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take2(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example5_image}"
+                        "url": f"data:image/png;base64,{example5_image}"
                     }
                 }
             ]
@@ -296,7 +272,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take2(image_path):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -310,7 +286,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take2(image_path):
     return response.json() 
 
 
-def call_wordle_to_get_colors_openai_vision_endpoint_take3(image_path):
+def extract_wordle_info_few_shot_brackets(image_path):
     prompt = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Find each green box and identify the letter within it and its position in the word.  Find each yellow box and identify the letter within it and its position in the word.  Find each dark grey box and identify the letter within it. "
    
     # Getting the base64 string
@@ -319,20 +295,6 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take3(image_path):
     # Few-shot examples
     example1_image = encode_image("images\\Example1Step3.png")
     example5_image = encode_image("images\\Example5Step2.png")
-
-    # TODO: switch order of text and image?  
-
-    # Green
-    # R is 106, G is 170, B is 100, Hex is 6AAA64
-    # H is 114, S is 41, V is 66.  Opacity - Alpha is 255.  
-
-    # Yellow
-    # R is 201, G is 180, B is 88, Hex is C9B458
-    # H is 48, S is 56, V is 78, Opacity - Alpha is 255.  
-
-    # Dark Grey
-    # R is 120, G is 124, B is 126, Hex is 787C7E
-    # H is 200, S is 4, V is 49, Opacity - Alpha is 255.  
 
     # Color definition - to try in both system and user prompt
     colorDef = "In Wordle, green is RGB value (106, 170, 100) and green is hex value #6AAA64.  Yellow is RGB value (201, 180, 88) and yellow is hex value #C9B458.  Dark grey is RGB value (120, 124, 126) and dark grey is hex value #787C7E. "
@@ -360,7 +322,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take3(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example1_image}"
+                        "url": f"data:image/png;base64,{example1_image}"
                     }
                 }
             ]
@@ -386,7 +348,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take3(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example5_image}"
+                        "url": f"data:image/png;base64,{example5_image}"
                     }
                 }
             ]
@@ -415,7 +377,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take3(image_path):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -429,7 +391,7 @@ def call_wordle_to_get_colors_openai_vision_endpoint_take3(image_path):
     return response.json()
 
 
-def get_colors_openai_vision_endpoint_take4(image_path, letter):
+def get_color_for_single_letter(image_path, letter):
     print("Letter is: " + letter)
     prompt = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  What color is the box behind the character \[" + letter + "\] in the image?"
     prompt2 = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Is the color in the box behind the \[" + letter + "\] character closest to green, yellow, or dark grey?"
@@ -467,11 +429,12 @@ def get_colors_openai_vision_endpoint_take4(image_path, letter):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example1_image}"
+                        "url": f"data:image/png;base64,{example1_image}"
                     }
                 }
             ]
         },
+        # TODO: the few shot doesn't make sense for this prompt.  I think this is wrong.  
         {
             "role": "assistant",
             "content": """In this Wordle puzzle, the letters in green boxes are:
@@ -493,7 +456,7 @@ def get_colors_openai_vision_endpoint_take4(image_path, letter):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example5_image}"
+                        "url": f"data:image/png;base64,{example5_image}"
                     }
                 }
             ]
@@ -522,7 +485,7 @@ def get_colors_openai_vision_endpoint_take4(image_path, letter):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -536,9 +499,10 @@ def get_colors_openai_vision_endpoint_take4(image_path, letter):
     return response.json() 
 
 
-# TODO: Bing wrote this code; probably a better way to do using regex
-# Define a function that takes a string as an argument
+# Return a list of characters within square brackets from a given input string
 def parse_brackets(string):
+    # TODO: Bing wrote this code; probably a better way to do using regex
+
     # Initialize an empty list to store the letters
     letters = []
     flag = False
@@ -562,7 +526,7 @@ def parse_brackets(string):
 
 def color_wrapper(image_path):
     # Call to get the characters
-    character_json = call_wordle_to_get_colors_openai_vision_endpoint_take3(image_path)
+    character_json = extract_wordle_info_few_shot_brackets(image_path)
 
     # Parse json
     character_text = character_json["choices"][0]["message"]["content"]
@@ -575,12 +539,10 @@ def color_wrapper(image_path):
     # Get color for each character
     summary = ""
     for letter in char_list:
-        result = get_colors_openai_vision_endpoint_take4(image_path, letter)
+        result = get_color_for_single_letter(image_path, letter)
         summary += result["choices"][0]["message"]["content"] + "\n\n"
 
     return summary
-
-#{'id': 'chatcmpl-8Nnx8nBQyiZ9dqgKM2nI8aNoGaJED', 'object': 'chat.completion', 'created': 1700684254, 'model': 'gpt-4-1106-vision-preview', 'usage': {'prompt_tokens': 3900, 'completion_tokens': 54, 'total_tokens': 3954}, 'choices': [{'message': {'role': 'assistant', 'content': 'In this Wordle puzzle, the letters in green boxes are:\n- [S] in the 4th position\n\nThere are no yellow boxes in this attempt.\n\nThe letters in dark grey boxes are:\n- [R], [A], [T], [E]'}, 'finish_details': {'type': 'stop', 'stop': '<|fim_suffix|>'}, 'index': 0}]}
 
 
 def call_wordle_dense_captioning_openai_vision_endpoint_take5(image_path):
@@ -618,7 +580,7 @@ def call_wordle_dense_captioning_openai_vision_endpoint_take5(image_path):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -667,7 +629,7 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take6(image_path):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -720,7 +682,7 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take7(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example1_image}"
+                        "url": f"data:image/png;base64,{example1_image}"
                     }
                 }
             ]
@@ -755,7 +717,7 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take7(image_path):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{example5_image}"
+                        "url": f"data:image/png;base64,{example5_image}"
                     }
                 }
             ]
@@ -786,7 +748,7 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take7(image_path):
             {
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:image/png;base64,{base64_image}"
             }
             }
         ]
@@ -800,33 +762,667 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take7(image_path):
     return response.json() 
 
 
-#wordleSystemPrompt = "You are an AI assistant that helps people solve a game of Wordle and correctly guess a word with 5 letters.  You must provide suggestions of 5-letter words that could solve the Wordle puzzle, given the information you know.  Letters with a green background are correct and are in the correct position.  Letters with a yellow background are in the word, but not in the correct position.  Letters with a dark grey background are not in the word.  Provide some example words that could solve the puzzle, or suggest words with letters that haven't been used yet to determine if those other letters are in the word.  One strategy is to guess RATES, PHONY, CLIMB, and FUDGE, which contain a wide variety of letters with only one overlap. \n"
-wordleAssistantPrompt = "First, focus on the letters in colored boxes in the center of the image.  List all letters in green boxes and what column they are in within their row, list which letters are in yellow boxes, and list which letters are in dark grey boxes.  \n\nThen state what we know about these letters, given the rules: Letters with a green background are correct and are in the correct position.  Letters with a yellow background are in the word, but not in the correct position.  Letters with a dark grey background are not in the word.\n\n Finally, given this information, state possible five-letter words that could solve this Wordle puzzle.  If you have 2 or less yellow or green letters, try guessing a new word with different letters to get more information. \n\n"
+def build_prompt(letter):
+    return "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Find and focus on the colored box containing the letter [" + letter + "].  Is the color in this box behind the [" + letter + "] character closest to green, yellow, or dark grey?"
+
+
+def get_colors_take8(image_path, letter):
+    print("Letter is: " + letter)
+    #prompt = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  What color is the box behind the character \[" + letter + "\] in the image?"
+    #prompt2 = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Find and focus on the colored box containing the letter [" + letter + "].  Is the color in this box behind the [" + letter + "] character closest to green, yellow, or dark grey?"
+    prompt2 = build_prompt(letter)
+    single_char_prompt = "Here is one single colored box.  Is the color in the box behind the [U] character closest to green, yellow, or dark grey?"
+
+    # Getting the base64 string
+    base64_image = encode_image(image_path)
+
+    # Few-shot examples
+    green_image = encode_image("images\\Green.png")
+    yellow_image = encode_image("images\\Yellow.png")
+    dark_grey_image = encode_image("images\\DarkGrey.png")
+    example1_image = encode_image("images\\Example1Step3.png")
+    
+
+    # Color definition - to try in both system and user prompt
+    colorDef = "In Wordle, green is RGB value (106, 170, 100) and green is hex value #6AAA64.  Yellow is RGB value (201, 180, 88) and yellow is hex value #C9B458.  Dark grey is RGB value (120, 124, 126) and dark grey is hex value #787C7E. "
+
+    headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {api_key}"
+    }
+
+    payload = {
+    "model": "gpt-4-vision-preview",
+    "messages": [
+        {
+            "role": "system",
+            #"content": "You are an AI assistant that helps people solve a game of Wordle and correctly guess a word with 5 letters.  You must provide suggestions of 5-letter words that could solve the Wordle puzzle, given the information you know.  Letters with a green background are correct and are in the correct position.  Letters with a yellow background are in the word, but not in the correct position.  Letters with a dark grey background are not in the word.  Provide some example words that could solve the puzzle, or suggest words with letters that haven't been used yet to determine if those other letters are in the word.  One strategy is to guess RATES, PHONY, CLIMB, and FUDGE, which contain a wide variety of letters with only one overlap."
+            "content": "You are a helpful assistant that can identify colors in the game of Wordle. " + colorDef
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{green_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "The colored box for the [U] is green"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{yellow_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "The colored box for the [U] is yellow"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{dark_grey_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "The colored box for the [U] is dark grey"
+        },
+        #todo start herre
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": build_prompt("B")
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{example1_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "The colored box for the [B] is yellow"
+        },
+        {
+        "role": "user",
+        "content": [
+            {
+            "type": "text",
+            "text": prompt2
+            },
+            {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{base64_image}"
+            }
+            }
+        ]
+        }
+    ],
+    "max_tokens": 100
+    }
+
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+    print(response.json())
+    return response.json() 
+
+
+def color_wrapper_2(image_path):
+    # Call to get the characters
+    character_json = call_wordle_base64_color_def_openai_vision_endpoint_take7(image_path)
+
+    # Parse json
+    character_text = character_json["choices"][0]["message"]["content"]
+    print("Character text is " + character_text)
+
+    # Parse out characters
+    char_list = parse_brackets(character_text)
+    #print("Character list is " + char_list)
+
+    # Get color for each character
+    summary = ""
+    for letter in char_list:
+        result = get_colors_take8(image_path, letter)
+        summary += result["choices"][0]["message"]["content"] + "\n\n"
+
+    return summary
+
+
+def slice_image(image, rows, cols):
+  # Load the image and get its dimensions
+  img = Image.open(image)
+  width, height = img.size
+
+  # Calculate the size of each tile
+  tile_width = width // cols
+  tile_height = height // rows
+
+  # Create a list to store the sliced images
+  tiles = []
+
+  # Loop through the rows and columns and crop the image
+  for i in range(rows):
+    for j in range(cols):
+      # Define the bounding box for each tile
+      left = j * tile_width
+      upper = i * tile_height
+      right = (j + 1) * tile_width
+      lower = (i + 1) * tile_height
+      box = (left, upper, right, lower)
+
+      # Crop the image and append it to the list
+      tile = img.crop(box)
+      #tiles.append(tile)
+      #output_file = os.path.join("images", f"tile_{i}.jpg")
+      output_file = f"tile_{i}_{j}.png"
+      
+      # Save the tile as a PNG image
+      tile.save(output_file, "PNG")
+      tiles.append(output_file)
+
+  # Return the list of sliced images
+  return tiles
+
+
+def get_character_and_color(single_char_image_path):
+    #prompt = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  What color is the box behind the character \[" + letter + "\] in the image?"
+    #prompt2 = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Find and focus on the colored box containing the letter [" + letter + "].  Is the color in this box behind the [" + letter + "] character closest to green, yellow, or dark grey?"
+    #prompt2 = build_prompt(letter)
+    single_char_prompt = "Here is one single colored box from Wordle.  What letter is in the box?  Is the color in the box (behind this letter) closest to green, yellow, dark grey, or empty?  Respond in the format: [letter], color"
+
+    # Getting the base64 string
+    base64_image = encode_image(single_char_image_path)
+
+    # Few-shot examples
+    green_image = encode_image("images\\Green.png")
+    yellow_image = encode_image("images\\Yellow.png")
+    dark_grey_image = encode_image("images\\DarkGrey.png")
+    empty_image = encode_image("images\\Empty.png")
+    
+
+    # Color definition - to try in both system and user prompt
+    colorDef = "In Wordle, green is RGB value (106, 170, 100) and green is hex value #6AAA64.  Yellow is RGB value (201, 180, 88) and yellow is hex value #C9B458.  Dark grey is RGB value (120, 124, 126) and dark grey is hex value #787C7E. "
+
+    headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {api_key}"
+    }
+
+    payload = {
+    "model": "gpt-4-vision-preview",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that can identify colors in the game of Wordle. " + colorDef
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{green_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "[U], green"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{yellow_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "[U], yellow"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{dark_grey_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "[U], dark grey"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{empty_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "Empty"
+        },
+        {
+        "role": "user",
+        "content": [
+            {
+            "type": "text",
+            "text": single_char_prompt
+            },
+            {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{base64_image}"
+            }
+            }
+        ]
+        }
+    ],
+    "max_tokens": 100
+    }
+
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+    print(response.json())
+    return response.json() 
+
+
+def chunking_wrapper(image_path):
+    # Call to break up the image
+    tile_list = slice_image(image_path, 6, 5)
+
+    # Get color for each character
+    summary = ""
+    for tile in tile_list:
+        result = get_character_and_color(tile)
+        line_result = result["choices"][0]["message"]["content"] + "\n"
+        print(line_result)
         
-wordlePrompt = "Focus on the letters in colored boxes in the center of the image.  List all letters in green boxes and what column they are in within their row, list which letters are in yellow boxes and their position in the word, and list which letters are in dark grey boxes."
-# In the image displaying a Wordle game, the following details are observed:\n\nLetters in green boxes and their column within their row:\n- U in the second column of the fourth row.\n- E in the fifth column of the fourth row.\n\nLetters in yellow boxes and their position in the word:\n- R in the first position of the first word.\n- L in the third position of the second word.\n- H in the second position of the third word.\n\nLetters in dark grey boxes:\n- A, T, S from the first word.\n- C, I, M, B from the second word.\n- P, H, O, N, Y from the third word.\n- F, D, G from the fourth word.\n\nThe green letters indicate correct letters in the correct position, the yellow letters are correct but in the wrong position, and the dark grey letters are not in the word at all.
+        # Optimization to break out of the for loop when we hit the empty tiles
+        if "empty" in line_result.lower():
+            break
 
-wordlePrompt = "Focus on the letters in colored boxes in the center of the image.  List all letters in green boxes and what column they are in within their row, list which letters are in yellow boxes and their position in the word, and list which letters are in dark grey boxes."
-# In the image displaying a Wordle game, the following details are observed:\n\nLetters in green boxes and their column within their row:\n- U in the second column of the fourth row.\n- E in the fifth column of the fourth row.\n\nLetters in yellow boxes and their position in the word:\n- R in the first position of the first word.\n- L in the third position of the second word.\n- H in the second position of the third word.\n\nLetters in dark grey boxes:\n- A, T, S from the first word.\n- C, I, M, B from the second word.\n- P, H, O, N, Y from the third word.\n- F, D, G from the fourth word.\n\nThe green letters indicate correct letters in the correct position, the yellow letters are correct but in the wrong position, and the dark grey letters are not in the word at all.
+        # Append to summary
+        summary += line_result
+        
+    return summary
 
 
-#call_openai_vision_endpoint()
-#call_openai_vision_endpoint(wordlePrompt)
-# Commenting out below for now
-#call_wordle_to_get_colors_openai_vision_endpoint("images\\Example2Step3.png")
+def call_model_to_get_next_word(summary):
+    #prompt = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  What color is the box behind the character \[" + letter + "\] in the image?"
+    #prompt2 = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Find and focus on the colored box containing the letter [" + letter + "].  Is the color in this box behind the [" + letter + "] character closest to green, yellow, or dark grey?"
+    #prompt2 = build_prompt(letter)
+    single_char_prompt = "Here is one single colored box from Wordle.  What letter is in the box?  Is the color in the box (behind this letter) closest to green, yellow, dark grey, or empty?  Respond in the format: [letter], color"
+
+    # Getting the base64 string
+    base64_image = encode_image(single_char_image_path)
+
+    # Few-shot examples
+    green_image = encode_image("images\\Green.png")
+    yellow_image = encode_image("images\\Yellow.png")
+    dark_grey_image = encode_image("images\\DarkGrey.png")
+    empty_image = encode_image("images\\Empty.png")
+    
+
+    # Color definition - to try in both system and user prompt
+    colorDef = "In Wordle, green is RGB value (106, 170, 100) and green is hex value #6AAA64.  Yellow is RGB value (201, 180, 88) and yellow is hex value #C9B458.  Dark grey is RGB value (120, 124, 126) and dark grey is hex value #787C7E. "
+
+    headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {api_key}"
+    }
+
+    payload = {
+    "model": "gpt-4-vision-preview",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that can identify colors in the game of Wordle. " + colorDef
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{green_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "[U], green"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{yellow_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "[U], yellow"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{dark_grey_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "[U], dark grey"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": single_char_prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{empty_image}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "Empty"
+        },
+        {
+        "role": "user",
+        "content": [
+            {
+            "type": "text",
+            "text": single_char_prompt
+            },
+            {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{base64_image}"
+            }
+            }
+        ]
+        }
+    ],
+    "max_tokens": 100
+    }
+
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+    print(response.json())
+    return response.json() 
+
+
+
+
+def wrapper_4(image_path):
+    summary = chunking_wrapper(image_path)
+    #print("Don't forget you are hardcoding rn")
+    '''
+    summary = """[R], dark grey
+[A], dark grey
+[T], dark grey
+[E], dark grey
+[S], dark grey
+[C], dark grey
+[L], yellow
+[I], dark grey
+[M], dark grey
+[B], yellow
+[P], dark grey
+[H], dark grey
+[O], dark grey
+[N], dark grey
+[Y], green"""
+'''
+
+    # TODO: figure out the problem of why debug is writing out too much, and ensuring it isn't over-calling
+
+    print("Summary")
+    print(summary)
+    lines = io.StringIO(summary)
+    print("Lines")
+    print(lines)
+
+    # Create an empty list to store the output
+    #output_list = []
+
+    # Create an empty structured array for the 5 positions in the word
+    dtype = [('index', int), ('list', object)]
+    position_no = np.empty(5, dtype=dtype)   
+    # Assign custom index values and dynamic lists to each row
+    position_no['index'] = [0, 1, 2, 3, 4]
+    position_no['list'] = [[],[],[],[],[]]
+
+    position_yes = np.array([".", ".", ".", ".","."])
+    #position_no = np.array([[1,2,3,4,5], []])       #TODO: this is the problem line - delete
+    all_no = []
+    yellow = []
+    position = 0
+
+    # Parse each line (and this is making assumption of them being in order, which the model seems to do consistently)
+    for line in lines.readlines():
+        print("line is " + line)
+        # Use regular expressions to find the letter and the color
+       
+        # Extract letter/character
+        match = re.search(r"\[(.*?)\]", line)
+        if match:
+            letter = match.group(1)
+        else:
+            print("No letter match found")
+
+        # Extract color
+        match = re.search(r",\s*(.*)", line)
+        if match:
+            color = match.group(1)
+        else:
+            print("No color match found")
+        
+        # Confirm we did it for debugging 
+        print("letter is " + letter)
+        print ("color is " + color)
+
+        letter = letter.lower()
+
+        # Append the letter and the color as a tuple to the output list
+        #output_list.append((letter, color))
+
+        # TODO: think about casing and add logic 
+        if color == "green":
+            position_yes[position] = letter
+        elif color == "yellow":
+            position_no["list"][position].append(letter)
+            yellow.append(letter)
+        elif color == "dark grey":
+            all_no.append(letter)
+
+        position += 1
+        if position > 4: 
+            position = 0
+
+        
+    # Debug check after for loop
+    print("Position yes")
+    print (position_yes)
+    print("Position no")
+    print (position_no)    
+    print("Yellow")
+    print (yellow)    
+    print("All no")
+    print (all_no)
+
+    # Build regular expression to get words that would work
+    my_reg_ex = ""
+    green_letter_count = 0
+    not_in_all = "".join(all_no)
+    for position in range(0, 5):
+    #for position, value in zip(position_no['index'], position_no['list']):
+        print("Position is " + str(position))
+        if position_yes[position] != ".":  # we have a green letter for this position
+            my_reg_ex += "[" + position_yes[position] + "]"
+            green_letter_count += 1
+        else:
+            # TODO: test with an example where there are 2 yellows in the same position.  
+            #my_reg_ex += r"[a-z^"
+            my_reg_ex += r"[^"
+            #if position_no["list"][position] != []:
+            print("length of position_no: " + str(len(position_no)))
+            print("length: " + str(len(position_no["list"][position])))
+            print("length2: " + str(len(position_no[position]["list"])))
+            print("length3: " + str(len(position_no[position][1])))
+            print("bing: " + "".join(position_no[position][1]))
+            #print("dtype" + dtype(position_no["list"][position]))
+            if len(position_no["list"][position]) > 0:
+                my_reg_ex += "".join(position_no["list"][position])
+            if all_no != []:
+                my_reg_ex += not_in_all
+            if my_reg_ex == "[a-z^":
+                my_reg_ex = "[a-z]"
+                print("This should never happen.")
+            else:
+                my_reg_ex += "]"
+        print("RegEx is " + my_reg_ex)
+
+    if green_letter_count == 5:
+        return "You won!  The word is " + my_reg_ex.replace("[", "").replace("]", "").upper()
+
+    # Run regular expression on Wordle list
+    with open("wordle_words.txt", "r") as f:
+        # Read the file content as a string
+        text = f.read()
+        #text = f.readlines()
+
+        # Find all the matches of the regex in the text
+        # Original was matches = re.findall(my_reg_ex, text)
+        matches = re.findall("[a-z][a-z][a-z][a-z][a-z]", text)     # match on lower-case 5-letter words first
+        matches2 = list(filter(lambda m: re.findall(my_reg_ex, m), matches)) # then exclude based on color specifics
+
+    # Confirm all yellow letters are present
+    valid_words = []
+    yellow_set = set(yellow)
+
+    # Iterate over the matches
+    for match in matches2:
+        # Convert the match to a set
+        match_set = set(match)
+
+        # Check if the yellow list is a subset of the match set
+        if yellow_set.issubset(match_set):
+            # Print the match as a valid word
+            #print(match)
+            valid_words.append(match)
+        #else:
+            # Print the match as an invalid word
+            # print(match, "is invalid")
+
+    # Return appropriate options
+    return "Some valid words to guess are: " + " ".join(valid_words).upper()
 
 
 
 # UI using Gradio
-with gr.Blocks(css=".gradio-label {color: red}") as demo:
+with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column():
             wordlePic = gr.Image(value=None, sources=["upload", "clipboard"], type="filepath", show_label=False, interactive=True, show_download_button=False)
         with gr.Column():
             txtModelOutput = gr.Textbox(label = "AI-generated output", lines=10)
 
-    wordlePic.upload(fn=call_wordle_base64_color_def_openai_vision_endpoint_take7, inputs=wordlePic, outputs=txtModelOutput)
+    #wordlePic.upload(fn=describe_image, inputs=wordlePic, outputs=txtModelOutput)
+    #wordlePic.upload(fn=extract_wordle_info_few_shot, inputs=wordlePic, outputs=txtModelOutput)
+    #wordlePic.upload(fn=extract_wordle_info_few_shot_brackets, inputs=wordlePic, outputs=txtModelOutput)
     #wordlePic.upload(fn=color_wrapper, inputs=wordlePic, outputs=txtModelOutput)
     #wordlePic.upload(fn=call_wordle_dense_captioning_openai_vision_endpoint_take5, inputs=wordlePic, outputs=txtModelOutput)
-
+    #wordlePic.upload(fn=chunking_wrapper, inputs=wordlePic, outputs=txtModelOutput)
+    #wordlePic.upload(fn=call_wordle_base64_color_def_openai_vision_endpoint_take7, inputs=wordlePic, outputs=txtModelOutput)
+    wordlePic.upload(fn=wrapper_4, inputs=wordlePic, outputs=txtModelOutput)
+    
 demo.launch()
