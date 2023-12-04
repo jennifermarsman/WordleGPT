@@ -643,9 +643,8 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take6(image_path):
     return response.json()
 
 
-
+# Few-shot version 
 def call_wordle_base64_color_def_openai_vision_endpoint_take7(image_path):
-    # TODO: add few shot back
     # TODO: try color def in user prompt?  
     # TODO: try asking for the color last, not second
     prompt = "Here is a new image.  Please follow the instructions: \n 1. Focus on the letters in colored boxes in the center of the image (not the virtual keyboard). \n 2. Identify each colored box as green, yellow, or dark grey.  \n 3. Identify the letter or character in each box. \n 4. Identify each character's position in the word. \n"
@@ -1109,7 +1108,7 @@ def chunking_wrapper(image_path):
     return summary
 
 
-def call_model_to_get_next_word(summary):
+def call_model_to_get_next_word(single_char_image_path):
     #prompt = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  What color is the box behind the character \[" + letter + "\] in the image?"
     #prompt2 = "Here is a new image.  Focus on the letters in colored boxes in the center of the image.  Find and focus on the colored box containing the letter [" + letter + "].  Is the color in this box behind the [" + letter + "] character closest to green, yellow, or dark grey?"
     #prompt2 = build_prompt(letter)
