@@ -1240,8 +1240,6 @@ def call_model_to_get_next_word(summary):
     return response.json() 
 
 
-
-
 def wrapper_4(image_path):
     summary = chunking_wrapper(image_path)
     #print("Don't forget you are hardcoding rn")
@@ -1271,9 +1269,6 @@ def wrapper_4(image_path):
     print("Lines")
     print(lines)
 
-    # Create an empty list to store the output
-    #output_list = []
-
     # Create an empty structured array for the 5 positions in the word
     dtype = [('index', int), ('list', object)]
     position_no = np.empty(5, dtype=dtype)   
@@ -1282,8 +1277,7 @@ def wrapper_4(image_path):
     position_no['list'] = [[],[],[],[],[]]
 
     position_yes = np.array([".", ".", ".", ".","."])
-    #position_no = np.array([[1,2,3,4,5], []])       #TODO: this is the problem line - delete
-    all_no = []
+    dark_grey = []
     yellow = []
     position = 0
 
@@ -1312,17 +1306,13 @@ def wrapper_4(image_path):
 
         letter = letter.lower()
 
-        # Append the letter and the color as a tuple to the output list
-        #output_list.append((letter, color))
-
-        # TODO: think about casing and add logic 
         if color == "green":
             position_yes[position] = letter
         elif color == "yellow":
             position_no["list"][position].append(letter)
             yellow.append(letter)
         elif color == "dark grey":
-            all_no.append(letter)
+            dark_grey.append(letter)
 
         position += 1
         if position > 4: 
@@ -1336,41 +1326,32 @@ def wrapper_4(image_path):
     print (position_no)    
     print("Yellow")
     print (yellow)    
-    print("All no")
-    print (all_no)
+    print("Dark Grey")
+    print (dark_grey)
 
     # Build regular expression to get words that would work
     my_reg_ex = ""
     green_letter_count = 0
-    not_in_all = "".join(all_no)
+    not_in_all = "".join(dark_grey)
     for position in range(0, 5):
-    #for position, value in zip(position_no['index'], position_no['list']):
         print("Position is " + str(position))
         if position_yes[position] != ".":  # we have a green letter for this position
             my_reg_ex += "[" + position_yes[position] + "]"
             green_letter_count += 1
         else:
-            # TODO: test with an example where there are 2 yellows in the same position.  
-            #my_reg_ex += r"[a-z^"
             my_reg_ex += r"[^"
-            #if position_no["list"][position] != []:
-            print("length of position_no: " + str(len(position_no)))
-            print("length: " + str(len(position_no["list"][position])))
-            print("length2: " + str(len(position_no[position]["list"])))
-            print("length3: " + str(len(position_no[position][1])))
-            print("bing: " + "".join(position_no[position][1]))
-            #print("dtype" + dtype(position_no["list"][position]))
             if len(position_no["list"][position]) > 0:
                 my_reg_ex += "".join(position_no["list"][position])
-            if all_no != []:
+            if dark_grey != []:
                 my_reg_ex += not_in_all
-            if my_reg_ex == "[a-z^":
+            if my_reg_ex == "[^":
                 my_reg_ex = "[a-z]"
                 print("This should never happen.")
             else:
                 my_reg_ex += "]"
         print("RegEx is " + my_reg_ex)
 
+    # Exit early if we are done
     if green_letter_count == 5:
         return "You won!  The word is " + my_reg_ex.replace("[", "").replace("]", "").upper()
 
@@ -1378,10 +1359,8 @@ def wrapper_4(image_path):
     with open("wordle_words.txt", "r") as f:
         # Read the file content as a string
         text = f.read()
-        #text = f.readlines()
 
         # Find all the matches of the regex in the text
-        # Original was matches = re.findall(my_reg_ex, text)
         matches = re.findall("[a-z][a-z][a-z][a-z][a-z]", text)     # match on lower-case 5-letter words first
         matches2 = list(filter(lambda m: re.findall(my_reg_ex, m), matches)) # then exclude based on color specifics
 
@@ -1396,12 +1375,7 @@ def wrapper_4(image_path):
 
         # Check if the yellow list is a subset of the match set
         if yellow_set.issubset(match_set):
-            # Print the match as a valid word
-            #print(match)
             valid_words.append(match)
-        #else:
-            # Print the match as an invalid word
-            # print(match, "is invalid")
 
     # Return appropriate options
     return "Some valid words to guess are: " + " ".join(valid_words).upper()
