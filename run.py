@@ -992,6 +992,17 @@ def chunking_wrapper(image_path):
     summary = ""
     for tile in tile_list:
         result = get_character_and_color(tile)
+        
+        # Handle error condition like API key not set
+        if "error" in result:
+            error_summary = "ERROR: "
+            if result["error"]["code"] == "invalid_api_key":
+                error_summary = error_summary + "PLEASE SET YOUR API KEY.  Open the run.py file and set the api_key variable. \n\n"
+            error_summary = error_summary + json.dumps(result)
+            print(error_summary)
+            return error_summary
+        
+        # Normal path
         line_result = result["choices"][0]["message"]["content"] + "\n"
         print(line_result)
         
@@ -1138,6 +1149,10 @@ def call_model_to_get_next_word(single_char_image_path):
 
 def wrapper_4(image_path):
     summary = chunking_wrapper(image_path)
+
+    if summary.startswith("ERROR"):
+        return summary
+    
     #print("Don't forget you are hardcoding rn")
     '''
     summary = """[R], dark grey
