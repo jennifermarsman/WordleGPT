@@ -11,6 +11,7 @@ from PIL import Image
 
 # OpenAI API Key
 api_key = "TODO - put your OpenAI key here"
+vision_model = "gpt-4-vision-preview"
 
 
 # Colors Constants
@@ -49,7 +50,7 @@ def call_openai_vision_endpoint(image_path, prompt):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
         "role": "user",
@@ -98,7 +99,7 @@ def extract_wordle_info_few_shot(image_path):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -203,7 +204,7 @@ def extract_wordle_info_few_shot_brackets(image_path):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -310,7 +311,7 @@ def get_color_for_single_letter(image_path, letter):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -462,7 +463,7 @@ def call_wordle_dense_captioning_openai_vision_endpoint_take5(image_path):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -511,7 +512,7 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take6(image_path):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -563,7 +564,7 @@ def call_wordle_base64_color_def_openai_vision_endpoint_take7(image_path):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -689,7 +690,7 @@ def get_colors_take8(image_path, letter):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -878,7 +879,7 @@ def get_character_and_color(single_char_image_path):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
@@ -1041,7 +1042,7 @@ def call_model_to_get_next_word(single_char_image_path):
     }
 
     payload = {
-    "model": "gpt-4-vision-preview",
+    "model": vision_model,
     "messages": [
         {
             "role": "system",
